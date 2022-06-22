@@ -8,11 +8,10 @@ use std::{net::TcpStream, time::Duration};
 
 pub fn scan_ports(mut subdomain: Subdomain) -> Subdomain {
     subdomain.open_ports = MOST_COMMON_PORTS_100
-        .into_iter()
+        .into_par_iter() // notice the into_par_iter
         .map(|port| scan_port(&subdomain.domain, *port))
-        .filter(|port| port.is_open)
+        .filter(|port| port.is_open) // filter closed ports
         .collect();
-
     subdomain
 }
 
