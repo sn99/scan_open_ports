@@ -1,67 +1,41 @@
-use futures::{stream, StreamExt};
-use reqwest::Client;
-use std::{
-    env,
-    time::{Duration, Instant},
-};
+use std::env;
 
-mod error;
-pub use error::Error;
-mod model;
-mod ports;
-mod subdomains;
-use model::Subdomain;
+use anyhow::Result;
+use clap::{Arg, Command};
+
+mod cli;
 mod common_ports;
+mod dns;
+mod error;
+mod modules;
+mod ports;
+pub use error::Error;
 
-#[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
-    let args: Vec<String> = env::args().collect();
+fn main() -> Result<()> {
+    env::set_var("RUST_LOG", "info,trust_dns_proto=error");
+    env_logger::init();
 
-    if args.len() != 2 {
-        return Err(Error::CliUsage.into());
-    }
+    let cli = Command::new(clap::crate_name!())
+        .version(clap::crate_version!())
+        .about(clap::crate_description!())
+        .subcommand(Command::new("modules").about("List all modules"))
+        .subcommand(
+            Command::new("scan").about("Scan a target").arg(
+                Arg::new("target")
+                    .help("The domain name to scan")
+                    .required(true)
+                    .index(1),
+            ),
+        )
+        .arg_required_else_help(true)
+        .get_matches();
 
-    let target = args[1].as_str();
-
-    let http_timeout = Duration::from_secs(10);
-    let http_client = Client::builder().timeout(http_timeout).build()?;
-
-    let ports_concurrency = 400;
-    let subdomains_concurrency = 200;
-    let scan_start = Instant::now();
-
-    let subdomains = subdomains::enumerate(&http_client, target).await?;
-
-    // Concurrent stream method 1: Using buffer_unordered + collect
-    let scan_result: Vec<Subdomain> = stream::iter(subdomains.into_iter())
-        .map(|subdomain| ports::scan_ports(ports_concurrency, subdomain))
-        .buffer_unordered(subdomains_concurrency)
-        .collect()
-        .await;
-
-    // Concurrent stream method 2: Using an Arc<Mutex<T>>
-    // let res: Arc<Mutex<Vec<Subdomain>>> = Arc::new(Mutex::new(Vec::new()));
-
-    // stream::iter(subdomains.into_iter())
-    //     .for_each_concurrent(subdomains_concurrency, |subdomain| {
-    //         let res = res.clone();
-    //         async move {
-    //             let subdomain = ports::scan_ports(ports_concurrency, subdomain).await;
-    //             res.lock().await.push(subdomain)
-    //         }
-    //     })
-    //     .await;
-
-    let scan_duration = scan_start.elapsed();
-    println!("Scan completed in {:?}", scan_duration);
-
-    for subdomain in scan_result {
-        println!("{}:", &subdomain.domain);
-        for port in &subdomain.open_ports {
-            println!("    {}: open", port.port);
-        }
-
-        println!();
+    if cli.subcommand_matches("modules").is_some() {
+        cli::modules();
+    } else if let Some(matches) = cli.subcommand_matches("scan") {
+        // we can safely unwrap as the argument is required
+        let target = matches.value_of("target").unwrap();
+        cli::scan(target)?;
     }
 
     Ok(())

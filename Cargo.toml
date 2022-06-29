@@ -1,6 +1,6 @@
 [package]
 name = "open_ports"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,6 +14,12 @@ serde = { version = "1", features = ["derive"] }
 trust-dns-resolver = "0.21"
 futures = "0.3"
 tokio-stream = "0.1"
+log = "0.4"
+env_logger = "0.9"
+async-trait = "0.1"
+clap = { version = "3.1", features = ["cargo"] }
+regex = "1"
+url = "2"
 
 [profile.release]
 lto = true
