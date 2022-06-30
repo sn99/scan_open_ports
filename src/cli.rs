@@ -92,7 +92,7 @@ pub fn scan(target: &str) -> Result<(), Error> {
         // 4th step: concurrently scan ports
         let subdomains: Vec<Subdomain> = stream::iter(subdomains.into_iter())
             .map(|domain| {
-                log::info!("Scannig ports for {}", &domain.domain);
+                log::info!("Scanning ports for {}", &domain.domain);
                 ports::scan_ports(ports_concurrency, domain)
             })
             .buffer_unordered(1)

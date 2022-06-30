@@ -1,6 +1,6 @@
 # open_ports
 
 Find subdomains and scan most common ports available
-to public
+to public and finding common vulnerabilities
 
-`cargo run --release example.com`
+`cargo run --release -- scan example.tech`
